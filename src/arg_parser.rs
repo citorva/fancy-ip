@@ -11,15 +11,7 @@ pub struct ArgParser {
 }
 
 impl ArgParser {
-    pub fn from_stream(stream: TokenStream) -> ArgParser {
-        ArgParser {
-            stream: stream.into_iter(),
-            end_reached: false,
-            span: None,
-        }
-    }
-
-    pub fn end_reached(&self) -> bool {
+    pub fn is_end_reached(&self) -> bool {
         return self.end_reached;
     }
 
@@ -39,8 +31,18 @@ impl ArgParser {
         }
     }
 
-    pub fn get_last_span(&self) -> Span {
+    pub fn last_span(&self) -> Span {
         self.span.unwrap()
+    }
+}
+
+impl From<TokenStream> for ArgParser {
+    fn from(value: TokenStream) -> Self {
+        ArgParser {
+            stream: value.into_iter(),
+            end_reached: false,
+            span: None,
+        }
     }
 }
 

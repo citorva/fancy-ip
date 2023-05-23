@@ -49,7 +49,7 @@ const OBJECT_PREFIX: &'static str = "std::net";
 #[cfg(not(feature = "std"))]
 const OBJECT_PREFIX: &'static str = "core::net";
 
-fn generate_ip_v4_stream(addr: &Ipv4Addr) -> TokenStream {
+fn generate_ipv4_stream(addr: &Ipv4Addr) -> TokenStream {
     let [a, b, c, d] = addr.octets();
 
     format!("{OBJECT_PREFIX}::Ipv4Addr::new({a}, {b}, {c}, {d})")
@@ -57,18 +57,18 @@ fn generate_ip_v4_stream(addr: &Ipv4Addr) -> TokenStream {
         .unwrap()
 }
 
-fn generate_socket_v4_stream(socket: &SocketAddrV4) -> TokenStream {
+fn generate_ipv4_socket_stream(socket: &SocketAddrV4) -> TokenStream {
     let addr = socket.ip();
     let port = socket.port();
 
-    let ip_stream = generate_ip_v4_stream(addr);
+    let ip_stream = generate_ipv4_stream(addr);
 
     format!("{OBJECT_PREFIX}::SocketAddrV4::new({ip_stream},{port})")
         .parse()
         .unwrap()
 }
 
-fn generate_ip_v6_stream(addr: &Ipv6Addr) -> TokenStream {
+fn generate_ipv6_stream(addr: &Ipv6Addr) -> TokenStream {
     let [a, b, c, d, e, f, g, h] = addr.segments();
 
     format!("{OBJECT_PREFIX}::Ipv6Addr::new({a}, {b}, {c}, {d}, {e}, {f}, {g}, {h})")
@@ -76,13 +76,13 @@ fn generate_ip_v6_stream(addr: &Ipv6Addr) -> TokenStream {
         .unwrap()
 }
 
-fn generate_socket_v6_stream(socket: &SocketAddrV6) -> TokenStream {
+fn generate_ipv6_socket_stream(socket: &SocketAddrV6) -> TokenStream {
     let addr = socket.ip();
     let port = socket.port();
     let flow_info = socket.flowinfo();
     let scope_id = socket.scope_id();
 
-    let ip_stream = generate_ip_v6_stream(addr);
+    let ip_stream = generate_ipv6_stream(addr);
 
     format!("{OBJECT_PREFIX}::SocketAddrV6::new({ip_stream},{port},{flow_info},{scope_id})")
         .parse()
@@ -106,25 +106,25 @@ fn generate_socket_v6_stream(socket: &SocketAddrV6) -> TokenStream {
 #[proc_macro_error]
 #[proc_macro]
 pub fn ipv4(item: TokenStream) -> TokenStream {
-    let mut parser = ArgParser::from_stream(item);
+    let mut parser = ArgParser::from(item);
 
     let ip = if let Some(v) = parser.next_string() {
         Ipv4Addr::from_str(v.as_str()).unwrap()
     } else {
         abort!(
-            parser.get_last_span(),
+            parser.last_span(),
             "The first argument must be a string giving the IPv4 address only"
         );
     };
 
-    if !parser.end_reached() {
+    if !parser.is_end_reached() {
         abort!(
-            parser.get_last_span(),
+            parser.last_span(),
             "Too many argument given, only expected the IP address"
         );
     }
 
-    generate_ip_v4_stream(&ip)
+    generate_ipv4_stream(&ip)
 }
 
 /// Generate an IPv6 address from the standard textual representation
@@ -144,25 +144,25 @@ pub fn ipv4(item: TokenStream) -> TokenStream {
 #[proc_macro_error]
 #[proc_macro]
 pub fn ipv6(item: TokenStream) -> TokenStream {
-    let mut parser = ArgParser::from_stream(item);
+    let mut parser = ArgParser::from(item);
 
     let ip = if let Some(v) = parser.next_string() {
         Ipv6Addr::from_str(v.as_str()).unwrap()
     } else {
         abort!(
-            parser.get_last_span(),
+            parser.last_span(),
             "The first argument must be a string giving the IPv6 address only"
         );
     };
 
-    if !parser.end_reached() {
+    if !parser.is_end_reached() {
         abort!(
-            parser.get_last_span(),
+            parser.last_span(),
             "Too many argument given, only expected the IP address"
         );
     }
 
-    generate_ip_v6_stream(&ip)
+    generate_ipv6_stream(&ip)
 }
 
 /// Generates a socket address from its string representation
@@ -182,25 +182,25 @@ pub fn ipv6(item: TokenStream) -> TokenStream {
 #[proc_macro_error]
 #[proc_macro]
 pub fn socketv4(item: TokenStream) -> TokenStream {
-    let mut parser = ArgParser::from_stream(item);
+    let mut parser = ArgParser::from(item);
 
     let socket = if let Some(v) = parser.next_string() {
         SocketAddrV4::from_str(v.as_str()).unwrap()
     } else {
         abort!(
-            parser.get_last_span(),
+            parser.last_span(),
             "The first argument must be a string giving the IPv4 address with optionnaly the port"
         );
     };
 
-    if !parser.end_reached() {
+    if !parser.is_end_reached() {
         abort!(
-            parser.get_last_span(),
+            parser.last_span(),
             "Too many argument given, only expected the IP address"
         );
     }
 
-    generate_socket_v4_stream(&socket)
+    generate_ipv4_socket_stream(&socket)
 }
 
 /// Generates a socket address from its string representation
@@ -221,45 +221,45 @@ pub fn socketv4(item: TokenStream) -> TokenStream {
 #[proc_macro_error]
 #[proc_macro]
 pub fn socketv6(item: TokenStream) -> TokenStream {
-    let mut parser = ArgParser::from_stream(item);
+    let mut parser = ArgParser::from(item);
 
     let mut socket = if let Some(v) = parser.next_string() {
         SocketAddrV6::from_str(v.as_str()).unwrap()
     } else {
         abort!(
-            parser.get_last_span(),
+            parser.last_span(),
             "The first argument must be a string giving the IPv6 address with optionnaly the port"
         );
     };
 
-    if !parser.end_reached() {
+    if !parser.is_end_reached() {
         if let Some(flow_info) = parser.next_integer() {
             socket.set_flowinfo(flow_info);
         } else {
             abort!(
-                parser.get_last_span(),
+                parser.last_span(),
                 "The second argument must be a 32 bit integer giving the IPv6 flow info"
             );
         }
     }
 
-    if !parser.end_reached() {
+    if !parser.is_end_reached() {
         if let Some(scope_id) = parser.next_integer() {
             socket.set_scope_id(scope_id)
         } else {
             abort!(
-                parser.get_last_span(),
+                parser.last_span(),
                 "The third argument must be a 32 bit integer giving the IPv6 scope id"
             );
         }
     }
 
-    if !parser.end_reached() {
+    if !parser.is_end_reached() {
         abort!(
-            parser.get_last_span(),
+            parser.last_span(),
             "Too many argument given, only expected the IP address"
         );
     }
 
-    generate_socket_v6_stream(&socket)
+    generate_ipv6_socket_stream(&socket)
 }
