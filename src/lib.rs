@@ -37,7 +37,7 @@ mod arg_parser;
 use arg_parser::ArgParser;
 use proc_macro_error::{abort, proc_macro_error};
 use std::{
-    net::{Ipv4Addr, Ipv6Addr, SocketAddrV4, SocketAddrV6},
+    net::{IpAddr, Ipv4Addr, Ipv6Addr, SocketAddr, SocketAddrV4, SocketAddrV6},
     str::FromStr,
 };
 
@@ -87,6 +87,44 @@ fn generate_ipv6_socket_stream(socket: &SocketAddrV6) -> TokenStream {
     format!("{OBJECT_PREFIX}::SocketAddrV6::new({ip_stream},{port},{flow_info},{scope_id})")
         .parse()
         .unwrap()
+}
+
+fn generate_ip_stream(addr: &IpAddr) -> TokenStream {
+    match addr {
+        IpAddr::V4(ip) => {
+            let ip_stream = generate_ipv4_stream(ip);
+
+            format!("{OBJECT_PREFIX}::IpAddr::V4({ip_stream})")
+                .parse()
+                .unwrap()
+        },
+        IpAddr::V6(ip) => {
+            let ip_stream = generate_ipv6_stream(ip);
+            
+            format!("{OBJECT_PREFIX}::IpAddr::V6({ip_stream})")
+                .parse()
+                .unwrap()
+        }
+    }
+}
+
+fn generate_ip_socket_stream(socket : &SocketAddr) -> TokenStream {
+    match socket {
+        SocketAddr::V4(socket) => {
+            let socket_stream = generate_ipv4_socket_stream(socket);
+
+            format!("{OBJECT_PREFIX}::SocketAddr::V4({socket_stream})")
+                .parse()
+                .unwrap()
+        },
+        SocketAddr::V6(socket) => {
+            let socket_stream = generate_ipv6_socket_stream(socket);
+
+            format!("{OBJECT_PREFIX}::SocketAddr::V6({socket_stream})")
+                .parse()
+                .unwrap()
+        }
+    }
 }
 
 /// Generate an IPv4 address from the standard textual representation
@@ -163,6 +201,46 @@ pub fn ipv6(item: TokenStream) -> TokenStream {
     }
 
     generate_ipv6_stream(&ip)
+}
+
+/// Generate an IP address from the standard textual representation (both 
+/// support IPv4 and IPv6)
+///
+/// # Syntax
+///
+/// This macro works as a function which take only one argument: the string
+/// representation of an IP address
+///
+/// # Example
+///
+/// ```
+/// # use fancy_ip::ip;
+///
+/// assert_eq!(ip!("::1"), std::net::IpAddr::V6(std::net::Ipv6Addr::new(0, 0, 0, 0, 0, 0, 0, 1)));
+/// assert_eq!(ip!("192.168.1.5"), std::net::IpAddr::V4(std::net::Ipv4Addr::new(192, 168, 1, 5)));
+/// ```
+#[proc_macro_error]
+#[proc_macro]
+pub fn ip(item: TokenStream) -> TokenStream {
+    let mut parser = ArgParser::from(item);
+
+    let ip = if let Some(v) = parser.next_string() {
+        IpAddr::from_str(v.as_str()).unwrap()
+    } else {
+        abort!(
+            parser.last_span(),
+            "The first argument must be a string giving the IP address only"
+        );
+    };
+
+    if !parser.is_end_reached() {
+        abort!(
+            parser.last_span(),
+            "Too many argument given, only expected the IP address"
+        );
+    }
+
+    generate_ip_stream(&ip)
 }
 
 /// Generates a socket address from its string representation
@@ -262,4 +340,43 @@ pub fn socketv6(item: TokenStream) -> TokenStream {
     }
 
     generate_ipv6_socket_stream(&socket)
+}
+
+/// Generates a socket address from its string representation
+///
+/// # Syntax
+///
+/// This macro works as a function which take only one argument: the string
+/// representation of a socket address
+///
+/// # Example
+///
+/// ```
+/// # use fancy_ip::socket;
+///
+/// assert_eq!(socket!("[::1]:3000"), std::net::SocketAddr::V6(std::net::SocketAddrV6::new(std::net::Ipv6Addr::new(0, 0, 0, 0, 0, 0, 0, 1), 3000, 0, 0)));
+/// assert_eq!(socket!("192.168.1.5:3000"), std::net::SocketAddr::V4(std::net::SocketAddrV4::new(std::net::Ipv4Addr::new(192, 168, 1, 5), 3000)));
+/// ```
+#[proc_macro_error]
+#[proc_macro]
+pub fn socket(item: TokenStream) -> TokenStream {
+    let mut parser = ArgParser::from(item);
+
+    let socket = if let Some(v) = parser.next_string() {
+        SocketAddr::from_str(v.as_str()).unwrap()
+    } else {
+        abort!(
+            parser.last_span(),
+            "The first argument must be a string giving the IP address with optionnaly the port"
+        );
+    };
+
+    if !parser.is_end_reached() {
+        abort!(
+            parser.last_span(),
+            "Too many argument given, only expected the IP address"
+        );
+    }
+
+    generate_ip_socket_stream(&socket)
 }
