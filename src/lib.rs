@@ -41,7 +41,7 @@ use std::{
     str::FromStr,
 };
 
-use proc_macro::TokenStream;
+use proc_macro::{TokenStream, Span};
 
 #[cfg(feature = "std")]
 const OBJECT_PREFIX: &'static str = "std::net";
@@ -127,6 +127,31 @@ fn generate_ip_socket_stream(socket : &SocketAddr) -> TokenStream {
     }
 }
 
+fn report_error<T>(value : Result<T, arg_parser::Error>) -> T {
+    match value {
+        Ok(v) => v,
+        Err(e) => {
+            abort!(e.span(), "{}", e);
+        }
+    }
+}
+
+fn report_too_few_arguments_error(given : usize, expected : usize) -> ! {
+    abort!(
+        Span::call_site(),
+        "Too few argument: Given {}, expected {}",
+        given, expected
+    );
+}
+
+fn report_too_many_arguments_error(span : Span, given : usize, expected : usize) -> ! {
+    abort!(
+        span,
+        "Too many arguments: Given {}, expected {}",
+        given, expected
+    );
+}
+
 /// Generate an IPv4 address from the standard textual representation
 ///
 /// # Syntax
@@ -146,20 +171,14 @@ fn generate_ip_socket_stream(socket : &SocketAddr) -> TokenStream {
 pub fn ipv4(item: TokenStream) -> TokenStream {
     let mut parser = ArgParser::from(item);
 
-    let ip = if let Some(v) = parser.next_string() {
+    let ip = if let Some((v, _)) = report_error(parser.next_string()) {
         Ipv4Addr::from_str(v.as_str()).unwrap()
     } else {
-        abort!(
-            parser.last_span(),
-            "The first argument must be a string giving the IPv4 address only"
-        );
+        report_too_few_arguments_error(0, 1);
     };
 
-    if !parser.is_end_reached() {
-        abort!(
-            parser.last_span(),
-            "Too many argument given, only expected the IP address"
-        );
+    if let Some(span) = report_error(parser.ignore_next()) {
+        report_too_many_arguments_error(span, parser.count_arguments(), 1);
     }
 
     generate_ipv4_stream(&ip)
@@ -184,20 +203,14 @@ pub fn ipv4(item: TokenStream) -> TokenStream {
 pub fn ipv6(item: TokenStream) -> TokenStream {
     let mut parser = ArgParser::from(item);
 
-    let ip = if let Some(v) = parser.next_string() {
+    let ip = if let Some((v, _)) = report_error(parser.next_string()) {
         Ipv6Addr::from_str(v.as_str()).unwrap()
     } else {
-        abort!(
-            parser.last_span(),
-            "The first argument must be a string giving the IPv6 address only"
-        );
+        report_too_few_arguments_error(0, 1);
     };
-
-    if !parser.is_end_reached() {
-        abort!(
-            parser.last_span(),
-            "Too many argument given, only expected the IP address"
-        );
+   
+    if let Some(span) = report_error(parser.ignore_next()) {
+        report_too_many_arguments_error(span, parser.count_arguments(), 1);
     }
 
     generate_ipv6_stream(&ip)
@@ -224,20 +237,14 @@ pub fn ipv6(item: TokenStream) -> TokenStream {
 pub fn ip(item: TokenStream) -> TokenStream {
     let mut parser = ArgParser::from(item);
 
-    let ip = if let Some(v) = parser.next_string() {
+    let ip = if let Some((v, _)) = report_error(parser.next_string()) {
         IpAddr::from_str(v.as_str()).unwrap()
     } else {
-        abort!(
-            parser.last_span(),
-            "The first argument must be a string giving the IP address only"
-        );
+        report_too_few_arguments_error(0, 1);
     };
-
-    if !parser.is_end_reached() {
-        abort!(
-            parser.last_span(),
-            "Too many argument given, only expected the IP address"
-        );
+   
+    if let Some(span) = report_error(parser.ignore_next()) {
+        report_too_many_arguments_error(span, parser.count_arguments(), 1);
     }
 
     generate_ip_stream(&ip)
@@ -262,20 +269,14 @@ pub fn ip(item: TokenStream) -> TokenStream {
 pub fn socketv4(item: TokenStream) -> TokenStream {
     let mut parser = ArgParser::from(item);
 
-    let socket = if let Some(v) = parser.next_string() {
+    let socket = if let Some((v, _)) = report_error(parser.next_string()) {
         SocketAddrV4::from_str(v.as_str()).unwrap()
     } else {
-        abort!(
-            parser.last_span(),
-            "The first argument must be a string giving the IPv4 address with optionnaly the port"
-        );
+        report_too_few_arguments_error(0, 1);
     };
-
-    if !parser.is_end_reached() {
-        abort!(
-            parser.last_span(),
-            "Too many argument given, only expected the IP address"
-        );
+   
+    if let Some(span) = report_error(parser.ignore_next()) {
+        report_too_many_arguments_error(span, parser.count_arguments(), 1);
     }
 
     generate_ipv4_socket_stream(&socket)
@@ -301,42 +302,27 @@ pub fn socketv4(item: TokenStream) -> TokenStream {
 pub fn socketv6(item: TokenStream) -> TokenStream {
     let mut parser = ArgParser::from(item);
 
-    let mut socket = if let Some(v) = parser.next_string() {
-        SocketAddrV6::from_str(v.as_str()).unwrap()
+    let mut socket = if let Some((v, span)) = report_error(parser.next_string()) {
+        match SocketAddrV6::from_str(v.as_str()) {
+            Ok(v) => v,
+            Err(_) => {
+                abort!(span, "The given address `{}` is not a valid IPv6 socket address", v);
+            }
+        }
     } else {
-        abort!(
-            parser.last_span(),
-            "The first argument must be a string giving the IPv6 address with optionnaly the port"
-        );
+        report_too_few_arguments_error(0, 1);
     };
 
-    if !parser.is_end_reached() {
-        if let Some(flow_info) = parser.next_integer() {
-            socket.set_flowinfo(flow_info);
-        } else {
-            abort!(
-                parser.last_span(),
-                "The second argument must be a 32 bit integer giving the IPv6 flow info"
-            );
-        }
+    if let Some((flow_info, _)) = report_error(parser.next_integer()) {
+        socket.set_flowinfo(flow_info);
     }
 
-    if !parser.is_end_reached() {
-        if let Some(scope_id) = parser.next_integer() {
-            socket.set_scope_id(scope_id)
-        } else {
-            abort!(
-                parser.last_span(),
-                "The third argument must be a 32 bit integer giving the IPv6 scope id"
-            );
-        }
+    if let Some((scope_id, _)) = report_error(parser.next_integer()) {
+        socket.set_scope_id(scope_id)
     }
-
-    if !parser.is_end_reached() {
-        abort!(
-            parser.last_span(),
-            "Too many argument given, only expected the IP address"
-        );
+   
+    if let Some(span) = report_error(parser.ignore_next()) {
+        report_too_many_arguments_error(span, parser.count_arguments(), 3);
     }
 
     generate_ipv6_socket_stream(&socket)
@@ -362,20 +348,19 @@ pub fn socketv6(item: TokenStream) -> TokenStream {
 pub fn socket(item: TokenStream) -> TokenStream {
     let mut parser = ArgParser::from(item);
 
-    let socket = if let Some(v) = parser.next_string() {
-        SocketAddr::from_str(v.as_str()).unwrap()
+    let socket = if let Some((v, span)) = report_error(parser.next_string()) {
+        match SocketAddr::from_str(v.as_str()) {
+            Ok(v) => v,
+            Err(_) => {
+                abort!(span, "The given address `{}` is not a valid socket address", v);
+            }
+        }
     } else {
-        abort!(
-            parser.last_span(),
-            "The first argument must be a string giving the IP address with optionnaly the port"
-        );
+        report_too_few_arguments_error(0, 1);
     };
-
-    if !parser.is_end_reached() {
-        abort!(
-            parser.last_span(),
-            "Too many argument given, only expected the IP address"
-        );
+   
+    if let Some(span) = report_error(parser.ignore_next()) {
+        report_too_many_arguments_error(span, parser.count_arguments(), 1);
     }
 
     generate_ip_socket_stream(&socket)
