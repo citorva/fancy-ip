@@ -15,7 +15,7 @@
 //! >
 //! > In order to use this feature, you must use the nightly toolchain and
 //! > enable the `ip_in_core` in `main.rs` or `lib.rs` as is:
-//! > ```
+//! > ```ignore
 //! > #![feature(ip_in_core)]
 //! > ```
 //! >
@@ -25,7 +25,7 @@
 //!
 //! In order to use fancy-ip in `no_std` contexts, you must add this library in
 //! your `Cargo.toml` disabling the default features:
-//! ```
+//! ```toml
 //! fancy-ip = { version = "0.1", default_features = false }
 //! ```
 
