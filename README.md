@@ -3,6 +3,7 @@ Elegantly initialize IP and socket addresses.
 [![Crates.io][crates-badge]][crates-url]
 [![Documentation][docs-badge]][docs-url]
 [![MIT licensed][mit-badge]][mit-url]
+[![Build Status][actions-badge]][actions-url]
 
 [crates-badge]: https://img.shields.io/crates/v/fancy-ip.svg
 [crates-url]: https://crates.io/crates/fancy-ip
@@ -10,6 +11,8 @@ Elegantly initialize IP and socket addresses.
 [docs-url]: https://docs.rs/fancy-ip
 [mit-badge]: https://img.shields.io/badge/license-MIT-blue.svg
 [mit-url]: LICENSE
+[actions-badge]: https://github.com/citorva/fancy-ip/workflows/CI/badge.svg
+[actions-url]:https://github.com/citorva/fancy-ip/actions?query=workflow%3ACI
 
 ## Overview
 
