@@ -171,8 +171,13 @@ fn report_too_many_arguments_error(span : Span, given : usize, expected : usize)
 pub fn ipv4(item: TokenStream) -> TokenStream {
     let mut parser = ArgParser::from(item);
 
-    let ip = if let Some((v, _)) = report_error(parser.next_string()) {
-        Ipv4Addr::from_str(v.as_str()).unwrap()
+    let ip = if let Some((v, span)) = report_error(parser.next_string()) {
+        match Ipv4Addr::from_str(v.as_str()) {
+            Ok(v) => v,
+            Err(_) => {
+                abort!(span, "The given address `{}` is not a valid IPv4 address", v);
+            }
+        }
     } else {
         report_too_few_arguments_error(0, 1);
     };
@@ -203,8 +208,13 @@ pub fn ipv4(item: TokenStream) -> TokenStream {
 pub fn ipv6(item: TokenStream) -> TokenStream {
     let mut parser = ArgParser::from(item);
 
-    let ip = if let Some((v, _)) = report_error(parser.next_string()) {
-        Ipv6Addr::from_str(v.as_str()).unwrap()
+    let ip = if let Some((v, span)) = report_error(parser.next_string()) {
+        match Ipv6Addr::from_str(v.as_str()) {
+            Ok(v) => v,
+            Err(_) => {
+                abort!(span, "The given address `{}` is not a valid IPv6 address", v);
+            }
+        }
     } else {
         report_too_few_arguments_error(0, 1);
     };
@@ -237,8 +247,13 @@ pub fn ipv6(item: TokenStream) -> TokenStream {
 pub fn ip(item: TokenStream) -> TokenStream {
     let mut parser = ArgParser::from(item);
 
-    let ip = if let Some((v, _)) = report_error(parser.next_string()) {
-        IpAddr::from_str(v.as_str()).unwrap()
+    let ip = if let Some((v, span)) = report_error(parser.next_string()) {
+        match IpAddr::from_str(v.as_str()) {
+            Ok(v) => v,
+            Err(_) => {
+                abort!(span, "The given address `{}` is not a valid IP address", v);
+            }
+        }
     } else {
         report_too_few_arguments_error(0, 1);
     };
@@ -269,8 +284,13 @@ pub fn ip(item: TokenStream) -> TokenStream {
 pub fn socketv4(item: TokenStream) -> TokenStream {
     let mut parser = ArgParser::from(item);
 
-    let socket = if let Some((v, _)) = report_error(parser.next_string()) {
-        SocketAddrV4::from_str(v.as_str()).unwrap()
+    let socket = if let Some((v, span)) = report_error(parser.next_string()) {
+        match SocketAddrV4::from_str(v.as_str()) {
+            Ok(v) => v,
+            Err(_) => {
+                abort!(span, "The given address `{}` is not a valid IPv4 socket address", v);
+            }
+        }
     } else {
         report_too_few_arguments_error(0, 1);
     };
