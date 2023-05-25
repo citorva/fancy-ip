@@ -18,4 +18,4 @@ std = []
 [dependencies]
 # Used to emit warnings and error in the compiler logs
 proc-macro-error = { version = "1", default-features = false }
-litrs = "0.4.0"
+litrs = { version = "0.4", default-features = false }
