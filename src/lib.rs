@@ -34,18 +34,16 @@ extern crate proc_macro;
 
 mod arg_parser;
 
+use std::net::{IpAddr, Ipv4Addr, Ipv6Addr, SocketAddr, SocketAddrV4, SocketAddrV6};
+use std::str::FromStr;
+
+use proc_macro::{Span, TokenStream};
+
 use arg_parser::ArgParser;
 use proc_macro_error::{abort, proc_macro_error};
-use std::{
-    net::{IpAddr, Ipv4Addr, Ipv6Addr, SocketAddr, SocketAddrV4, SocketAddrV6},
-    str::FromStr,
-};
-
-use proc_macro::{TokenStream, Span};
 
 #[cfg(feature = "std")]
 const OBJECT_PREFIX: &'static str = "std::net";
-
 #[cfg(not(feature = "std"))]
 const OBJECT_PREFIX: &'static str = "core::net";
 
@@ -97,10 +95,10 @@ fn generate_ip_stream(addr: &IpAddr) -> TokenStream {
             format!("{OBJECT_PREFIX}::IpAddr::V4({ip_stream})")
                 .parse()
                 .unwrap()
-        },
+        }
         IpAddr::V6(ip) => {
             let ip_stream = generate_ipv6_stream(ip);
-            
+
             format!("{OBJECT_PREFIX}::IpAddr::V6({ip_stream})")
                 .parse()
                 .unwrap()
@@ -108,7 +106,7 @@ fn generate_ip_stream(addr: &IpAddr) -> TokenStream {
     }
 }
 
-fn generate_ip_socket_stream(socket : &SocketAddr) -> TokenStream {
+fn generate_ip_socket_stream(socket: &SocketAddr) -> TokenStream {
     match socket {
         SocketAddr::V4(socket) => {
             let socket_stream = generate_ipv4_socket_stream(socket);
@@ -116,7 +114,7 @@ fn generate_ip_socket_stream(socket : &SocketAddr) -> TokenStream {
             format!("{OBJECT_PREFIX}::SocketAddr::V4({socket_stream})")
                 .parse()
                 .unwrap()
-        },
+        }
         SocketAddr::V6(socket) => {
             let socket_stream = generate_ipv6_socket_stream(socket);
 
@@ -127,7 +125,7 @@ fn generate_ip_socket_stream(socket : &SocketAddr) -> TokenStream {
     }
 }
 
-fn report_error<T>(value : Result<T, arg_parser::Error>) -> T {
+fn report_error<T>(value: Result<T, arg_parser::Error>) -> T {
     match value {
         Ok(v) => v,
         Err(e) => {
@@ -136,19 +134,21 @@ fn report_error<T>(value : Result<T, arg_parser::Error>) -> T {
     }
 }
 
-fn report_too_few_arguments_error(given : usize, expected : usize) -> ! {
+fn report_too_few_arguments_error(given: usize, expected: usize) -> ! {
     abort!(
         Span::call_site(),
         "Too few argument: Given {}, expected {}",
-        given, expected
+        given,
+        expected
     );
 }
 
-fn report_too_many_arguments_error(span : Span, given : usize, expected : usize) -> ! {
+fn report_too_many_arguments_error(span: Span, given: usize, expected: usize) -> ! {
     abort!(
         span,
         "Too many arguments: Given {}, expected {}",
-        given, expected
+        given,
+        expected
     );
 }
 
@@ -175,7 +175,11 @@ pub fn ipv4(item: TokenStream) -> TokenStream {
         match Ipv4Addr::from_str(v.as_str()) {
             Ok(v) => v,
             Err(_) => {
-                abort!(span, "The given address `{}` is not a valid IPv4 address", v);
+                abort!(
+                    span,
+                    "The given address `{}` is not a valid IPv4 address",
+                    v
+                );
             }
         }
     } else {
@@ -212,13 +216,17 @@ pub fn ipv6(item: TokenStream) -> TokenStream {
         match Ipv6Addr::from_str(v.as_str()) {
             Ok(v) => v,
             Err(_) => {
-                abort!(span, "The given address `{}` is not a valid IPv6 address", v);
+                abort!(
+                    span,
+                    "The given address `{}` is not a valid IPv6 address",
+                    v
+                );
             }
         }
     } else {
         report_too_few_arguments_error(0, 1);
     };
-   
+
     if let Some(span) = report_error(parser.ignore_next()) {
         report_too_many_arguments_error(span, parser.count_arguments(), 1);
     }
@@ -226,7 +234,7 @@ pub fn ipv6(item: TokenStream) -> TokenStream {
     generate_ipv6_stream(&ip)
 }
 
-/// Generate an IP address from the standard textual representation (both 
+/// Generate an IP address from the standard textual representation (both
 /// support IPv4 and IPv6)
 ///
 /// # Syntax
@@ -257,7 +265,7 @@ pub fn ip(item: TokenStream) -> TokenStream {
     } else {
         report_too_few_arguments_error(0, 1);
     };
-   
+
     if let Some(span) = report_error(parser.ignore_next()) {
         report_too_many_arguments_error(span, parser.count_arguments(), 1);
     }
@@ -288,13 +296,17 @@ pub fn socketv4(item: TokenStream) -> TokenStream {
         match SocketAddrV4::from_str(v.as_str()) {
             Ok(v) => v,
             Err(_) => {
-                abort!(span, "The given address `{}` is not a valid IPv4 socket address", v);
+                abort!(
+                    span,
+                    "The given address `{}` is not a valid IPv4 socket address",
+                    v
+                );
             }
         }
     } else {
         report_too_few_arguments_error(0, 1);
     };
-   
+
     if let Some(span) = report_error(parser.ignore_next()) {
         report_too_many_arguments_error(span, parser.count_arguments(), 1);
     }
@@ -326,7 +338,11 @@ pub fn socketv6(item: TokenStream) -> TokenStream {
         match SocketAddrV6::from_str(v.as_str()) {
             Ok(v) => v,
             Err(_) => {
-                abort!(span, "The given address `{}` is not a valid IPv6 socket address", v);
+                abort!(
+                    span,
+                    "The given address `{}` is not a valid IPv6 socket address",
+                    v
+                );
             }
         }
     } else {
@@ -340,7 +356,7 @@ pub fn socketv6(item: TokenStream) -> TokenStream {
     if let Some((scope_id, _)) = report_error(parser.next_integer()) {
         socket.set_scope_id(scope_id)
     }
-   
+
     if let Some(span) = report_error(parser.ignore_next()) {
         report_too_many_arguments_error(span, parser.count_arguments(), 3);
     }
@@ -372,13 +388,17 @@ pub fn socket(item: TokenStream) -> TokenStream {
         match SocketAddr::from_str(v.as_str()) {
             Ok(v) => v,
             Err(_) => {
-                abort!(span, "The given address `{}` is not a valid socket address", v);
+                abort!(
+                    span,
+                    "The given address `{}` is not a valid socket address",
+                    v
+                );
             }
         }
     } else {
         report_too_few_arguments_error(0, 1);
     };
-   
+
     if let Some(span) = report_error(parser.ignore_next()) {
         report_too_many_arguments_error(span, parser.count_arguments(), 1);
     }
